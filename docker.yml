@@ -1,0 +1,67 @@
+---
+- hosts: awp
+  become: true
+
+
+  tasks:
+  - name: Install aptitude using apt
+    apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+  - name: Install required system packages
+    apt: name={{ item }} state=latest update_cache=yes
+    loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+    #Добавление GPG ключа
+  - name: Add Docker GPG apt Key
+    apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    # Добавить репозиторий Docker
+  - name: Add Docker Repository
+    apt_repository:
+       repo: deb https://download.docker.com/linux/ubuntu bionic stable
+       state: present
+
+    #Обовление и установка docker-ce
+  - name: Update apt and install docker-ce
+    apt: update_cache=yes name=docker-ce state=latest
+
+    #Установка с помощью Python модулей Docker
+ # - name: Install Docker Module for Python
+  #  pip:
+   #   name: docker
+
+# Установка модуля dcoker-compose python
+#    - name: install docker module
+#      pip:
+#        name: docker-compose
+
+    #Установка docker-compose
+  - name: install docker-compose
+    apt: name=docker-compose state=latest
+
+    #создание каталога
+  - name: mkdir wordpress
+    file:
+      path: /home/ubuntu/wordpress/nginx/conf
+      state: directory
+      mode: '0755'
+
+  # Копирование конфига nginx
+  - name: copy default.conf
+    copy:
+      src: /etc/ansible/ansible-conf/nginx/conf/default.conf
+      dest: /home/ubuntu/wordpress/nginx/conf/default.conf
+
+    # Копирование docker-compose.ym
+  - name: copy docker.compose.yml
+    copy:
+      src: /etc/ansible/ansible-docker/docker-compose.yml
+      dest: /home/ubuntu/wordpress/docker-compose.yml
+
+    # Запуск docker-compose.yml
+  - name: Docker-compose up docker-compose.yml
+    shell: docker-compose up -d
+    args:
+      chdir: /home/ubuntu/wordpress/
